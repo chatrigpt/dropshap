@@ -167,7 +167,7 @@ export default function Landing() {
                   </div>
                   <div className="bg-primary p-6 rounded-2xl shadow-lg shadow-primary/20 translate-x-6">
                     <p className="text-sm text-white/60 font-bold mb-2 uppercase">Avec Dropshap</p>
-                    <p className="text-lg font-bold text-white">"Je ne paie que ce que je vends. Mon capital est en sécurité et mon business tourne."</p>
+                    <p className="text-lg font-bold text-white">"Les seules dépenses que je fais c'est pour le marketing et ma boutique. Le client paie le fournisseur et mon bénéfice en même temps. La vie est belle avec dropshap !"</p>
                   </div>
                 </div>
               </div>
