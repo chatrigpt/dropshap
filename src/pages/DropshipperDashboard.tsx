@@ -1,0 +1,161 @@
+import React, { useEffect, useState } from 'react';
+import DashboardLayout from '../components/DashboardLayout';
+import StatsCard from '../components/StatsCard';
+import DataTable from '../components/DataTable';
+import { Package, CreditCard, ShoppingCart, ExternalLink, RefreshCw } from 'lucide-react';
+import { dataService } from '../lib/data';
+import { Product, Transaction } from '../types';
+import { formatCurrency, cn } from '../lib/utils';
+import { toast } from 'react-hot-toast';
+
+export default function DropshipperDashboard() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const fetchData = async () => {
+    setIsLoading(true);
+    const [p, t] = await Promise.all([
+      dataService.getProducts(),
+      dataService.getTransactions(),
+    ]);
+    setProducts(p);
+    setTransactions(t);
+    setIsLoading(false);
+  };
+
+  const totalEarnings = transactions.reduce((acc, t) => acc + t.montant_dropshipper, 0);
+
+  return (
+    <DashboardLayout title="Tableau de Bord Vendeur">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
+        <StatsCard 
+          label="Gains Totaux" 
+          value={formatCurrency(totalEarnings)} 
+          icon={<CreditCard className="w-6 h-6" />} 
+          className="bg-primary/5 border-primary/20"
+        />
+        <StatsCard 
+          label="Total Commandes" 
+          value={transactions.length} 
+          icon={<ShoppingCart className="w-6 h-6" />} 
+        />
+        <div className="md:col-span-2 card bg-dark-bg text-white flex items-center justify-between">
+          <div>
+            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-1">Intégration Shopify</p>
+            <h3 className="text-xl font-black font-display tracking-tight">dropshap-demo.myshopify.com</h3>
+            <div className="flex items-center gap-2 mt-2">
+              <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
+              <span className="text-xs text-primary font-black uppercase tracking-wider">Actif & Synchronisé</span>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button 
+              onClick={() => toast.success('Synchronisation des commandes...')}
+              className="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all"
+            >
+              <RefreshCw className="w-5 h-5" />
+            </button>
+            <button 
+              onClick={() => toast.success('Ouverture de l\'admin Shopify...')}
+              className="p-3 bg-white/10 rounded-xl hover:bg-white/20 transition-all"
+            >
+              <ExternalLink className="w-5 h-5" />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="space-y-10">
+        <section id="catalogue">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black font-display uppercase tracking-wider">Catalogue Produits</h2>
+            <p className="text-sm text-gray-500 font-medium">Parcourez les produits à vendre dans votre boutique</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {products.map((product) => (
+              <div key={product.record_id} className="card group hover:shadow-2xl transition-all border-transparent hover:border-primary/20">
+                <div className="relative aspect-square rounded-2xl overflow-hidden bg-gray-100 mb-4">
+                  {product.photo_produit || product.product_image_base64 ? (
+                    <img 
+                      src={product.photo_produit || product.product_image_base64} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      referrerPolicy="no-referrer" 
+                      alt={product.product_name}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-300">
+                      <Package className="w-12 h-12" />
+                    </div>
+                  )}
+                  <div className="absolute top-3 right-3 px-3 py-1 bg-white/90 backdrop-blur-sm rounded-lg text-[10px] font-black uppercase shadow-sm tracking-widest">
+                    {product.category}
+                  </div>
+                </div>
+                <h3 className="font-black text-xl mb-1 font-display tracking-tight uppercase">{product.product_name}</h3>
+                <p className="text-sm text-gray-500 mb-4 font-medium">{product.variant}</p>
+                
+                <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-2xl">
+                  <div>
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Votre Profit</p>
+                    <p className="text-xl font-black text-green-600">{formatCurrency(product.label_price - product.supplier_price)}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Prix de Vente</p>
+                    <p className="text-xl font-black text-gray-900">{formatCurrency(product.label_price)}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
+                    <span>Stock Disponible:</span>
+                    <span className="text-gray-900">{product.stock_available} unités</span>
+                  </div>
+                  <div className="flex justify-between text-xs text-gray-500 font-bold uppercase tracking-wider">
+                    <span>Localisation:</span>
+                    <span className="text-gray-900">{product.supplier_city}</span>
+                  </div>
+                  <button 
+                    onClick={() => toast.success('Produit ajouté à votre boutique !')}
+                    className="w-full btn-primary py-4 rounded-xl font-bold shadow-lg shadow-primary/20"
+                  >
+                    Ajouter à ma Boutique
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+
+        <section id="commandes">
+          <div className="flex justify-between items-center mb-6">
+            <h2 className="text-xl font-black font-display uppercase tracking-wider">Commandes Récentes</h2>
+          </div>
+          <DataTable<Transaction> 
+            isLoading={isLoading}
+            data={transactions}
+            columns={[
+              { header: 'Client', accessor: 'contact_client' },
+              { header: 'Produit', accessor: 'produit' },
+              { header: 'Qté', accessor: 'quantite' },
+              { header: 'Vente Totale', accessor: (t: Transaction) => formatCurrency(t.montant_client) },
+              { header: 'Votre Profit', accessor: (t: Transaction) => formatCurrency(t.montant_dropshipper), className: 'font-bold text-green-600' },
+              { 
+                header: 'Statut', 
+                accessor: () => (
+                  <span className="px-2 py-1 rounded-full bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-widest">
+                    En cours
+                  </span>
+                ) 
+              },
+            ]}
+          />
+        </section>
+      </div>
+    </DashboardLayout>
+  );
+}
