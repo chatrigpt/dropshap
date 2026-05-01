@@ -27,6 +27,33 @@ async function startServer() {
 
   const N8N_BASE_URL = 'https://digitaladn225.app.n8n.cloud/webhook';
 
+  console.log('Starting server with SHOPIFY_CLIENT_ID:', SHOPIFY_CLIENT_ID ? 'Set' : 'Missing');
+
+  // --- NEW SHOPIFY MANAGEMENT ROUTES (Moved up for priority) ---
+
+  // List all connected shops
+  app.get('/api/shopify/shops', async (req, res) => {
+    console.log('API Request: GET /api/shopify/shops');
+    try {
+      const { data, error } = await supabase
+        .from('shops')
+        .select('shop_domain, installed_at');
+      
+      if (error) {
+        console.error('Supabase error fetching shops:', error);
+        // Special check for missing table
+        if (error.code === '42P01') {
+          return res.status(200).json([]); // Return empty list gracefully if table missing
+        }
+        throw error;
+      }
+      res.json(data || []);
+    } catch (error: any) {
+      console.error('Error in /api/shopify/shops:', error.message);
+      res.status(500).json({ error: 'Database error', details: error.message });
+    }
+  });
+
   // Standard JSON body parser for other routes
   app.use((req, res, next) => {
     if (req.originalUrl === '/api/webhooks/shopify') {
@@ -94,7 +121,7 @@ async function startServer() {
       }
 
       // Redirect back to the app board
-      res.redirect('/#success=installed');
+      res.redirect('/dashboard/dropshipper#success=installed');
     } catch (error: any) {
       console.error('OAuth Callback Error:', error.response?.data || error.message);
       res.status(500).send('OAuth failed');
@@ -179,23 +206,6 @@ async function startServer() {
     } catch (error: any) {
       console.error(`Error proxying to n8n (${url}):`, error.message);
       res.status(error.response?.status || 500).json(error.response?.data || { error: 'Internal Server Error' });
-    }
-  });
-
-  // --- NEW SHOPIFY MANAGEMENT ROUTES ---
-
-  // List all connected shops
-  app.get('/api/shopify/shops', async (req, res) => {
-    try {
-      const { data, error } = await supabase
-        .from('shops')
-        .select('shop_domain, installed_at');
-      
-      if (error) throw error;
-      res.json(data || []);
-    } catch (error: any) {
-      console.error('Error fetching shops:', error.message);
-      res.status(500).json({ error: 'Failed to fetch connected shops' });
     }
   });
 

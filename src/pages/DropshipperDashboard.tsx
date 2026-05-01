@@ -28,13 +28,26 @@ export default function DropshipperDashboard() {
   const fetchShops = async () => {
     try {
       const response = await fetch('/api/shopify/shops');
-      const data = await response.json();
-      setConnectedShops(data);
-      if (data.length > 0) {
-        setSelectedShop(data[0].shop_domain);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        setConnectedShops(Array.isArray(data) ? data : []);
+        if (data && Array.isArray(data) && data.length > 0) {
+          setSelectedShop(data[0].shop_domain);
+        }
+      } else {
+        const text = await response.text();
+        console.error('Non-JSON response received:', text.substring(0, 100));
+        setConnectedShops([]);
       }
     } catch (error) {
       console.error('Error fetching shops:', error);
+      setConnectedShops([]);
     }
   };
 
@@ -62,12 +75,18 @@ export default function DropshipperDashboard() {
         body: JSON.stringify({ productId, shopDomain: selectedShop })
       });
 
-      const data = await response.json();
-
-      if (data.success) {
-        toast.success(`Produit ajouté à ${selectedShop} !`);
+      const contentType = response.headers.get('content-type');
+      if (contentType && contentType.includes('application/json')) {
+        const data = await response.json();
+        if (data.success) {
+          toast.success(`Produit ajouté à ${selectedShop} !`);
+        } else {
+          toast.error(data.error || 'Erreur lors de l\'exportation');
+        }
       } else {
-        toast.error(data.error || 'Erreur lors de l\'exportation');
+        const text = await response.text();
+        console.error('Push error non-JSON:', text.substring(0, 100));
+        toast.error('Erreur du serveur (réponse non-valide)');
       }
     } catch (error) {
       console.error('Push error:', error);

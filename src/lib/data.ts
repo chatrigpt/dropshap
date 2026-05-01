@@ -13,6 +13,8 @@ export const dataService = {
       return [];
     }
 
+    console.log('Raw products from Supabase:', data?.slice(0, 2));
+
     return (data || []).map((p: any) => ({
       record_id: p.id,
       product_code: p.product_code || p.code || '',
