@@ -11,15 +11,32 @@ import { toast } from 'react-hot-toast';
 export default function DropshipperDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [connectedShops, setConnectedShops] = useState<{shop_domain: string}[]>([]);
+  const [selectedShop, setSelectedShop] = useState<string>('');
   const [isLoading, setIsLoading] = useState(true);
+  const [isPushing, setIsPushing] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
+    fetchShops();
     if (window.location.hash.includes('success=installed')) {
       toast.success('Shopify connecté avec succès !');
       window.location.hash = '';
     }
   }, []);
+
+  const fetchShops = async () => {
+    try {
+      const response = await fetch('/api/shopify/shops');
+      const data = await response.json();
+      setConnectedShops(data);
+      if (data.length > 0) {
+        setSelectedShop(data[0].shop_domain);
+      }
+    } catch (error) {
+      console.error('Error fetching shops:', error);
+    }
+  };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -30,6 +47,34 @@ export default function DropshipperDashboard() {
     setProducts(p);
     setTransactions(t);
     setIsLoading(false);
+  };
+
+  const handlePushToShopify = async (productId: string) => {
+    if (!selectedShop) {
+      return toast.error('Veuillez d\'abord connecter une boutique Shopify');
+    }
+
+    setIsPushing(productId);
+    try {
+      const response = await fetch('/api/shopify/push-product', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ productId, shopDomain: selectedShop })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        toast.success(`Produit ajouté à ${selectedShop} !`);
+      } else {
+        toast.error(data.error || 'Erreur lors de l\'exportation');
+      }
+    } catch (error) {
+      console.error('Push error:', error);
+      toast.error('Erreur de connexion au serveur');
+    } finally {
+      setIsPushing(null);
+    }
   };
 
   const totalEarnings = transactions.reduce((acc, t) => acc + t.montant_dropshipper, 0);
@@ -49,26 +94,56 @@ export default function DropshipperDashboard() {
           icon={<ShoppingCart className="w-6 h-6" />} 
         />
         <div className="md:col-span-2 card bg-dark-bg text-white flex items-center justify-between">
-          <div>
-            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-1">Intégration Shopify</p>
-            <div className="flex flex-col gap-2">
-              <input 
-                type="text" 
-                placeholder="votre-boutique.myshopify.com"
-                className="bg-white/10 border-white/20 text-white rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                id="shop-domain-input"
-              />
-              <button 
-                onClick={() => {
-                  const shop = (document.getElementById('shop-domain-input') as HTMLInputElement).value;
-                  if (!shop) return toast.error('Veuillez entrer un domaine Shopify');
-                  window.location.href = `/api/shopify/auth?shop=${shop}`;
-                }}
-                className="btn-primary py-2 px-4 text-xs font-black uppercase tracking-widest h-fit"
-              >
-                Installer l'App
-              </button>
-            </div>
+          <div className="flex-1 mr-4">
+            <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-2">Intégration Shopify</p>
+            
+            {connectedShops.length > 0 ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                  <span className="text-sm font-bold">{connectedShops.length} boutique(s) connectée(s)</span>
+                </div>
+                <select 
+                  value={selectedShop}
+                  onChange={(e) => setSelectedShop(e.target.value)}
+                  className="w-full bg-white/10 border-white/20 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                >
+                  {connectedShops.map(s => (
+                    <option key={s.shop_domain} value={s.shop_domain} className="bg-dark-bg">{s.shop_domain}</option>
+                  ))}
+                </select>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => {
+                      const shop = prompt('Entrez l\'URL de votre autre boutique (ex: ma-boutique.myshopify.com)');
+                      if (shop) window.location.href = `/api/shopify/auth?shop=${shop}`;
+                    }}
+                    className="text-[10px] font-black uppercase text-primary hover:underline"
+                  >
+                    + Ajouter une autre boutique
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                <input 
+                  type="text" 
+                  placeholder="votre-boutique.myshopify.com"
+                  className="bg-white/10 border-white/20 text-white rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                  id="shop-domain-input"
+                />
+                <button 
+                  onClick={() => {
+                    const shop = (document.getElementById('shop-domain-input') as HTMLInputElement).value;
+                    if (!shop) return toast.error('Veuillez entrer un domaine Shopify');
+                    window.location.href = `/api/shopify/auth?shop=${shop}`;
+                  }}
+                  className="btn-primary py-2 px-4 text-xs font-black uppercase tracking-widest h-fit"
+                >
+                  Installer l'App
+                </button>
+              </div>
+            )}
           </div>
           <div className="flex gap-2">
             <button 
@@ -137,10 +212,21 @@ export default function DropshipperDashboard() {
                     <span className="text-gray-900">{product.supplier_city}</span>
                   </div>
                   <button 
-                    onClick={() => toast.success('Produit ajouté à votre boutique !')}
-                    className="w-full btn-primary py-4 rounded-xl font-bold shadow-lg shadow-primary/20"
+                    onClick={() => handlePushToShopify(product.record_id)}
+                    disabled={isPushing === product.record_id}
+                    className={cn(
+                      "w-full btn-primary py-4 rounded-xl font-bold shadow-lg shadow-primary/20 flex items-center justify-center gap-2",
+                      isPushing === product.record_id && "opacity-70 cursor-not-allowed"
+                    )}
                   >
-                    Ajouter à ma Boutique
+                    {isPushing === product.record_id ? (
+                      <>
+                        <RefreshCw className="w-5 h-5 animate-spin" />
+                        Exportation...
+                      </>
+                    ) : (
+                      'Ajouter à ma Boutique'
+                    )}
                   </button>
                 </div>
               </div>

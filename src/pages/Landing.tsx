@@ -110,7 +110,7 @@ export default function Landing() {
                     </svg>
                   ))}
                 </div>
-                <p className="text-xs font-bold text-gray-400">Approuvé par 30,000+ e-commerçants & équipes</p>
+                <p className="text-xs font-bold text-gray-400">Approuvé par les e-commerçants & équipes commerciales du continent</p>
               </div>
             </div>
 
@@ -380,10 +380,10 @@ export default function Landing() {
             <div className="relative">
               <div className="bg-gray-800 p-10 rounded-[2.9rem] border border-white/5 relative z-10">
                 <blockquote className="text-2xl font-medium italic mb-8 leading-relaxed">
-                  "Grâce à Dropshap, j'ai pu lancer mon activité de vente de produits alimentaires en ligne avec seulement 5000 FCFA pour ma connexion internet. Aujourd'hui, je traite plus de 10 commandes par jour."
+                  "Grâce à Dropshap, j'ai pu lancer mon activité de vente de produits alimentaires en ligne avec seulement 5000 FCFA pour ma connexion internet. Aujourd'hui, je traite près de 60 commandes par jour."
                 </blockquote>
                 <div className="flex items-center gap-4">
-                  <img src="https://i.pravatar.cc/100?u=9" className="w-14 h-14 rounded-full border-2 border-primary" alt="Testimonial" />
+                  <img src="https://monadia-bucket.sfo3.digitaloceanspaces.com/DROPSHAP/MANOU%20PARKER.jpg" className="w-14 h-14 rounded-full border-2 border-primary" alt="Testimonial" />
                   <div>
                     <p className="font-bold text-lg text-white">Jean-Marc Koffi</p>
                     <p className="text-primary text-sm font-bold">E-commerçant à Abidjan</p>
