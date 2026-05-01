@@ -15,6 +15,10 @@ export default function DropshipperDashboard() {
 
   useEffect(() => {
     fetchData();
+    if (window.location.hash.includes('success=installed')) {
+      toast.success('Shopify connecté avec succès !');
+      window.location.hash = '';
+    }
   }, []);
 
   const fetchData = async () => {
@@ -47,10 +51,23 @@ export default function DropshipperDashboard() {
         <div className="md:col-span-2 card bg-dark-bg text-white flex items-center justify-between">
           <div>
             <p className="text-[10px] uppercase font-black tracking-widest text-gray-400 mb-1">Intégration Shopify</p>
-            <h3 className="text-xl font-black font-display tracking-tight">dropshap-demo.myshopify.com</h3>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="w-2 h-2 bg-primary rounded-full animate-pulse"></span>
-              <span className="text-xs text-primary font-black uppercase tracking-wider">Actif & Synchronisé</span>
+            <div className="flex flex-col gap-2">
+              <input 
+                type="text" 
+                placeholder="votre-boutique.myshopify.com"
+                className="bg-white/10 border-white/20 text-white rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                id="shop-domain-input"
+              />
+              <button 
+                onClick={() => {
+                  const shop = (document.getElementById('shop-domain-input') as HTMLInputElement).value;
+                  if (!shop) return toast.error('Veuillez entrer un domaine Shopify');
+                  window.location.href = `/api/shopify/auth?shop=${shop}`;
+                }}
+                className="btn-primary py-2 px-4 text-xs font-black uppercase tracking-widest h-fit"
+              >
+                Installer l'App
+              </button>
             </div>
           </div>
           <div className="flex gap-2">

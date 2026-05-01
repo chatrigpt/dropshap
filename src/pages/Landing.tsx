@@ -96,7 +96,7 @@ export default function Landing() {
                 {[1, 2, 3, 4, 5].map((i) => (
                   <img 
                     key={i}
-                    src={`https://i.pravatar.cc/100?u=${i + 20}`} 
+                    src={`https://monadia-bucket.sfo3.digitaloceanspaces.com/DROPSHAP/DROPSHAP${i + 20}.jpg`} 
                     className="w-10 h-10 rounded-full border-2 border-[#0A0A0A] object-cover" 
                     alt="User" 
                   />

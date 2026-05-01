@@ -314,101 +314,101 @@ export default function SupplierDashboard() {
                     onRemove={() => setNewProduct({ ...newProduct, product_image_base64: '' })}
                   />
                   
-                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Code Produit</label>
+                        <input 
+                          type="text" required className="input-field rounded-xl text-gray-900"
+                          value={newProduct.product_code}
+                          onChange={(e) => setNewProduct({ ...newProduct, product_code: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Catégorie</label>
+                        <input 
+                          type="text" required className="input-field rounded-xl text-gray-900"
+                          value={newProduct.category}
+                          onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Code Produit</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Nom du Produit</label>
                       <input 
-                        type="text" required className="input-field rounded-xl"
-                        value={newProduct.product_code}
-                        onChange={(e) => setNewProduct({ ...newProduct, product_code: e.target.value })}
+                        type="text" required className="input-field rounded-xl text-gray-900"
+                        value={newProduct.product_name}
+                        onChange={(e) => setNewProduct({ ...newProduct, product_name: e.target.value })}
                       />
                     </div>
+                    
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Catégorie</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Variante</label>
                       <input 
-                        type="text" required className="input-field rounded-xl"
-                        value={newProduct.category}
-                        onChange={(e) => setNewProduct({ ...newProduct, category: e.target.value })}
-                      />
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Nom du Produit</label>
-                    <input 
-                      type="text" required className="input-field rounded-xl"
-                      value={newProduct.product_name}
-                      onChange={(e) => setNewProduct({ ...newProduct, product_name: e.target.value })}
-                    />
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Variante</label>
-                    <input 
-                      type="text" className="input-field rounded-xl" placeholder="ex: Rouge / XL"
-                      value={newProduct.variant}
-                      onChange={(e) => setNewProduct({ ...newProduct, variant: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Prix Fournisseur</label>
-                      <input 
-                        type="number" required className="input-field rounded-xl"
-                        value={newProduct.supplier_price}
-                        onChange={(e) => setNewProduct({ ...newProduct, supplier_price: Number(e.target.value) })}
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Prix Public</label>
-                      <input 
-                        type="number" required className="input-field rounded-xl"
-                        value={newProduct.label_price}
-                        onChange={(e) => setNewProduct({ ...newProduct, label_price: Number(e.target.value) })}
+                        type="text" className="input-field rounded-xl text-gray-900" placeholder="ex: Rouge / XL"
+                        value={newProduct.variant}
+                        onChange={(e) => setNewProduct({ ...newProduct, variant: e.target.value })}
                       />
                     </div>
                   </div>
-
-                  <div className="grid grid-cols-2 gap-4">
+  
+                  <div className="space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Prix Fournisseur</label>
+                        <input 
+                          type="number" required className="input-field rounded-xl text-gray-900"
+                          value={newProduct.supplier_price}
+                          onChange={(e) => setNewProduct({ ...newProduct, supplier_price: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Prix Public</label>
+                        <input 
+                          type="number" required className="input-field rounded-xl text-gray-900"
+                          value={newProduct.label_price}
+                          onChange={(e) => setNewProduct({ ...newProduct, label_price: Number(e.target.value) })}
+                        />
+                      </div>
+                    </div>
+  
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Stock Disponible</label>
+                        <input 
+                          type="number" required className="input-field rounded-xl text-gray-900"
+                          value={newProduct.stock_available}
+                          onChange={(e) => setNewProduct({ ...newProduct, stock_available: Number(e.target.value) })}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Ville</label>
+                        <input 
+                          type="text" required className="input-field rounded-xl text-gray-900"
+                          value={newProduct.supplier_city}
+                          onChange={(e) => setNewProduct({ ...newProduct, supplier_city: e.target.value })}
+                        />
+                      </div>
+                    </div>
+  
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Stock Disponible</label>
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Zones de Livraison</label>
                       <input 
-                        type="number" required className="input-field rounded-xl"
-                        value={newProduct.stock_available}
-                        onChange={(e) => setNewProduct({ ...newProduct, stock_available: Number(e.target.value) })}
+                        type="text" required className="input-field rounded-xl text-gray-900" placeholder="ex: Abidjan, Yamoussoukro"
+                        value={newProduct.delivery_zones}
+                        onChange={(e) => setNewProduct({ ...newProduct, delivery_zones: e.target.value })}
                       />
                     </div>
+  
                     <div>
-                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Ville</label>
-                      <input 
-                        type="text" required className="input-field rounded-xl"
-                        value={newProduct.supplier_city}
-                        onChange={(e) => setNewProduct({ ...newProduct, supplier_city: e.target.value })}
+                      <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Modèle de Message de Commande</label>
+                      <textarea 
+                        className="input-field h-24 resize-none rounded-xl text-gray-900" 
+                        placeholder="Bonjour, je souhaite commander {product_name}..."
+                        value={newProduct.order_message_template}
+                        onChange={(e) => setNewProduct({ ...newProduct, order_message_template: e.target.value })}
                       />
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Zones de Livraison</label>
-                    <input 
-                      type="text" required className="input-field rounded-xl" placeholder="ex: Abidjan, Yamoussoukro"
-                      value={newProduct.delivery_zones}
-                      onChange={(e) => setNewProduct({ ...newProduct, delivery_zones: e.target.value })}
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">Modèle de Message de Commande</label>
-                    <textarea 
-                      className="input-field h-24 resize-none rounded-xl" 
-                      placeholder="Bonjour, je souhaite commander {product_name}..."
-                      value={newProduct.order_message_template}
-                      onChange={(e) => setNewProduct({ ...newProduct, order_message_template: e.target.value })}
-                    />
-                  </div>
                 </div>
               </div>
               
