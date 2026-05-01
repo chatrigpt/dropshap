@@ -194,11 +194,13 @@ export default function DropshipperDashboard() {
                 <div className="flex items-center justify-between mb-6 p-4 bg-gray-50 rounded-2xl">
                   <div>
                     <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Votre Profit</p>
-                    <p className="text-xl font-black text-green-600">{formatCurrency(product.label_price - product.supplier_price)}</p>
+                    <p className="text-xl font-black text-green-600">
+                      {formatCurrency(Number(product.label_price || 0) - Number(product.supplier_price || 0))}
+                    </p>
                   </div>
                   <div className="text-right">
                     <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Prix de Vente</p>
-                    <p className="text-xl font-black text-gray-900">{formatCurrency(product.label_price)}</p>
+                    <p className="text-xl font-black text-gray-900">{formatCurrency(Number(product.label_price || 0))}</p>
                   </div>
                 </div>
 

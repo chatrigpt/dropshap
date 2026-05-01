@@ -57,7 +57,24 @@ export default function SupplierDashboard() {
       dataService.getTransactions()
     ]);
     // Filter products for this supplier
-    setProducts(allProducts.filter(p => p.supplier_id === user?.userId));
+    setProducts(allProducts.filter(p => {
+      if (!user) return false;
+      
+      const pSupplierId = String(p.supplier_id || '').toLowerCase();
+      const uUserId = String(user.userId || '').toLowerCase();
+      const pSupplierName = String(p.supplier_name || '').toLowerCase();
+      const uBusinessName = String(user.businessName || '').toLowerCase();
+      const uName = String(user.name || '').toLowerCase();
+
+      // If ID matches, it's definitely ours
+      if (pSupplierId === uUserId && uUserId !== '') return true;
+
+      // Otherwise fallback to name matching (very common for MVP data)
+      const nameMatches = (pSupplierName === uBusinessName && uBusinessName !== '') || 
+                          (pSupplierName === uName && uName !== '');
+      
+      return nameMatches;
+    }));
     // Filter transactions for this supplier
     setTransactions(allTransactions.filter(t => t.fournisseur === user?.businessName));
     setIsLoading(false);
@@ -238,8 +255,8 @@ export default function SupplierDashboard() {
 
       {/* Status Update Modal */}
       {isStatusModalOpen && selectedOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsStatusModalOpen(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="p-8 border-b border-gray-100 flex justify-between items-center">
               <h3 className="text-xl font-black font-display uppercase tracking-tight">Mettre à jour le Statut</h3>
               <button onClick={() => setIsStatusModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
@@ -297,8 +314,8 @@ export default function SupplierDashboard() {
 
       {/* Add Product Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsAddModalOpen(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-8 border-b border-gray-100 flex justify-between items-center sticky top-0 bg-white z-10">
               <h3 className="text-2xl font-black font-display uppercase tracking-tight">Ajouter un Nouveau Produit</h3>
               <button onClick={() => setIsAddModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">
@@ -423,8 +440,8 @@ export default function SupplierDashboard() {
 
       {/* Stock Update Modal */}
       {isStockModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setIsStockModalOpen(false)}>
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="p-8 border-b border-gray-100 flex justify-between items-center">
               <h3 className="text-xl font-black font-display uppercase tracking-tight">Mise à jour du Stock</h3>
               <button onClick={() => setIsStockModalOpen(false)} className="p-2 hover:bg-gray-100 rounded-full">

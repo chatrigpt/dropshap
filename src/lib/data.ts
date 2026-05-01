@@ -16,26 +16,26 @@ export const dataService = {
     return (data || []).map((p: any) => ({
       record_id: p.id,
       product_code: p.product_code || p.code || '',
-      product_name: p.name || p.product_name || '',
+      product_name: p.product_name || p.name || '',
       category: p.category || '',
       variant: p.variant || '',
-      stock_available: p.stock_available || p.stock || 0,
-      supplier_price: p.supplier_price || 0,
-      label_price: p.label_price || 0,
+      stock_available: Number(p.stock_available || p.stock || 0),
+      supplier_price: Number(p.supplier_price || 0),
+      label_price: Number(p.label_price || 0),
       currency: p.currency || 'XOF',
       supplier_id: p.supplier_id || '',
       supplier_name: p.supplier_name || 'Fournisseur',
-      supplier_contact_name: 'Contact',
-      supplier_whatsapp: '',
-      supplier_phone: '',
-      supplier_email: '',
-      preferred_contact_method: 'WhatsApp',
-      supplier_city: 'Abidjan',
+      supplier_contact_name: p.supplier_contact_name || 'Contact',
+      supplier_whatsapp: p.supplier_whatsapp || '',
+      supplier_phone: p.supplier_phone || '',
+      supplier_email: p.supplier_email || '',
+      preferred_contact_method: p.preferred_contact_method || 'WhatsApp',
+      supplier_city: p.supplier_city || 'Abidjan',
       delivery_zones: p.delivery_zones || '',
-      order_message_template: '',
+      order_message_template: p.order_message_template || '',
       is_active: p.is_active ?? true,
       last_updated: p.created_at || '',
-      photo_produit: p.photo_url || p.image_url
+      photo_produit: p.photo_produit || p.image_url || p.photo_url
     }));
   },
   
@@ -125,12 +125,20 @@ export const dataService = {
         product_name: product.product_name,
         category: product.category,
         variant: product.variant,
-        supplier_id: product.supplier_id,
-        supplier_price: product.supplier_price,
-        label_price: product.label_price,
-        stock: product.stock_available,
+        supplier_id: product.supplier_id || null,
+        supplier_name: product.supplier_name,
+        supplier_contact_name: product.supplier_contact_name,
+        supplier_whatsapp: product.supplier_whatsapp,
+        supplier_phone: product.supplier_phone,
+        supplier_email: product.supplier_email,
+        preferred_contact_method: product.preferred_contact_method,
+        supplier_city: product.supplier_city,
+        supplier_price: Number(product.supplier_price || 0),
+        label_price: Number(product.label_price || 0),
+        stock_available: Number(product.stock_available || 0),
         delivery_zones: product.delivery_zones,
-        image_url: product.photo_produit || product.product_image_base64,
+        order_message_template: product.order_message_template,
+        photo_produit: product.product_image_base64 || product.photo_produit,
         is_active: true
       }]);
 
@@ -155,14 +163,14 @@ export const dataService = {
       // Also update Supabase directly to ensure UI reflects it immediately
       const { data: currentProduct } = await supabase
         .from('products')
-        .select('stock')
+        .select('stock_available')
         .eq('product_code', data.product_code)
         .single();
       
       if (currentProduct) {
         await supabase
           .from('products')
-          .update({ stock: Math.max(0, (currentProduct.stock || 0) - data.quantity) })
+          .update({ stock_available: Math.max(0, (currentProduct.stock_available || 0) - data.quantity) })
           .eq('product_code', data.product_code);
       }
 

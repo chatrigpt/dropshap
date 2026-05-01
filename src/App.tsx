@@ -38,7 +38,7 @@ export default function App() {
             Le déploiement est réussi, mais les clés de connexion à la base de données ne sont pas encore configurées sur Vercel.
           </p>
           <div className="space-y-3 text-left bg-black/40 p-5 rounded-2xl font-mono text-[11px] text-gray-500 border border-white/5">
-            <p className="flex items-center gap-2"><span className="w-4 h-4 bg-white/5 rounded flex items-center justify-center text-[8px]">1</span> Accédez à <span className="text-white">Settings > Environment Variables</span></p>
+            <p className="flex items-center gap-2"><span className="w-4 h-4 bg-white/5 rounded flex items-center justify-center text-[8px]">1</span> Accédez à <span className="text-white">Settings &gt; Environment Variables</span></p>
             <p className="flex items-center gap-2"><span className="w-4 h-4 bg-white/5 rounded flex items-center justify-center text-[8px]">2</span> Ajoutez <span className="text-white font-bold text-primary">VITE_SUPABASE_URL</span></p>
             <p className="flex items-center gap-2"><span className="w-4 h-4 bg-white/5 rounded flex items-center justify-center text-[8px]">3</span> Ajoutez <span className="text-white font-bold text-primary">VITE_SUPABASE_ANON_KEY</span></p>
             <p className="flex items-center gap-4 mt-2 text-[10px] text-gray-400 pt-2 border-t border-white/5 italic">Redémarrez le déploiement ou rafraîchissez cette page après l'ajout.</p>
