@@ -15,9 +15,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (!shop || !code) return res.status(400).send('Missing parameters');
 
+  const cleanShop = String(shop).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
   try {
     // Exchange code for access token
-    const accessTokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+    const accessTokenResponse = await axios.post(`https://${cleanShop}/admin/oauth/access_token`, {
       client_id: SHOPIFY_CLIENT_ID,
       client_secret: SHOPIFY_CLIENT_SECRET,
       code
@@ -27,7 +29,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Store in Supabase
     const { error: dbError } = await supabase.from('shops').upsert({
-      shop_domain: shop as string,
+      shop_domain: cleanShop,
       access_token: accessToken,
       installed_at: new Date().toISOString()
     }, { onConflict: 'shop_domain' });

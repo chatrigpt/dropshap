@@ -135,7 +135,14 @@ export default function DropshipperDashboard() {
                   <button 
                     onClick={() => {
                       const shop = prompt('Entrez l\'URL de votre autre boutique (ex: ma-boutique.myshopify.com)');
-                      if (shop) window.location.href = `/api/shopify/auth?shop=${shop}`;
+                      if (shop) {
+                        const url = `/api/shopify/auth?shop=${encodeURIComponent(shop)}`;
+                        if (window.self !== window.top) {
+                          window.open(url, '_blank');
+                        } else {
+                          window.location.href = url;
+                        }
+                      }
                     }}
                     className="text-[10px] font-black uppercase text-primary hover:underline"
                   >
@@ -144,24 +151,30 @@ export default function DropshipperDashboard() {
                 </div>
               </div>
             ) : (
-              <div className="flex flex-col gap-2">
-                <input 
-                  type="text" 
-                  placeholder="votre-boutique.myshopify.com"
-                  className="bg-white/10 border-white/20 text-white rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-                  id="shop-domain-input"
-                />
-                <button 
-                  onClick={() => {
-                    const shop = (document.getElementById('shop-domain-input') as HTMLInputElement).value;
-                    if (!shop) return toast.error('Veuillez entrer un domaine Shopify');
-                    window.location.href = `/api/shopify/auth?shop=${shop}`;
-                  }}
-                  className="btn-primary py-2 px-4 text-xs font-black uppercase tracking-widest h-fit"
-                >
-                  Installer l'App
-                </button>
-              </div>
+                <div className="flex flex-col gap-2">
+                  <input 
+                    type="text" 
+                    placeholder="votre-boutique.myshopify.com"
+                    className="bg-white/10 border-white/20 text-white rounded-lg px-3 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    id="shop-domain-input"
+                  />
+                  <button 
+                    onClick={() => {
+                      const shop = (document.getElementById('shop-domain-input') as HTMLInputElement).value;
+                      if (!shop) return toast.error('Veuillez entrer un domaine Shopify');
+                      const url = `/api/shopify/auth?shop=${encodeURIComponent(shop)}`;
+                      // If in iframe, open in new tab
+                      if (window.self !== window.top) {
+                        window.open(url, '_blank');
+                      } else {
+                        window.location.href = url;
+                      }
+                    }}
+                    className="btn-primary py-2 px-4 text-xs font-black uppercase tracking-widest h-fit"
+                  >
+                    Installer l'App
+                  </button>
+                </div>
             )}
           </div>
           <div className="flex gap-2">

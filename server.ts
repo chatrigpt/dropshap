@@ -70,12 +70,21 @@ async function startServer() {
     const { shop } = req.query;
     if (!shop) return res.status(400).send('Missing shop parameter');
 
-    const scopes = 'read_products,read_orders';
-    const redirectUri = `${SHOPIFY_APP_URL}/api/shopify/callback`;
+    // Sanitize shop domain
+    const cleanShop = String(shop)
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/, '');
+
+    const scopes = 'read_products,read_orders,write_products';
+    
+    // Use environment variable or determine from request
+    const appUrl = SHOPIFY_APP_URL || `${req.protocol}://${req.get('host')}`;
+    const redirectUri = `${appUrl}/api/shopify/callback`;
     const state = crypto.randomBytes(16).toString('hex');
 
-    const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+    const authUrl = `https://${cleanShop}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
     
+    console.log('Initiating OAuth for:', cleanShop, 'Redirecting to:', authUrl);
     res.redirect(authUrl);
   });
 
@@ -85,9 +94,11 @@ async function startServer() {
 
     if (!shop || !code) return res.status(400).send('Missing parameters');
 
+    const cleanShop = String(shop).replace(/^https?:\/\//i, '').replace(/\/+$/, '');
+
     try {
       // Exchange code for access token
-      const accessTokenResponse = await axios.post(`https://${shop}/admin/oauth/access_token`, {
+      const accessTokenResponse = await axios.post(`https://${cleanShop}/admin/oauth/access_token`, {
         client_id: SHOPIFY_CLIENT_ID,
         client_secret: SHOPIFY_CLIENT_SECRET,
         code
@@ -97,7 +108,7 @@ async function startServer() {
 
       // Store in Supabase
       const { error: dbError } = await supabase.from('shops').upsert({
-        shop_domain: shop,
+        shop_domain: cleanShop,
         access_token: accessToken,
         installed_at: new Date().toISOString()
       }, { onConflict: 'shop_domain' });
@@ -108,12 +119,12 @@ async function startServer() {
       }
 
       // STEP 3 - Register Webhooks
-      await registerShopifyWebhooks(shop as string, accessToken);
+      await registerShopifyWebhooks(cleanShop, accessToken);
 
       // STEP 6 - Notify n8n of new shop
       try {
         await axios.post(`${N8N_BASE_URL}/dropchampy-newshop`, {
-          shop_domain: shop,
+          shop_domain: cleanShop,
           installed_at: new Date().toISOString()
         });
       } catch (err) {
