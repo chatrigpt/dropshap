@@ -64,27 +64,55 @@ async function startServer() {
   });
 
   // --- SHOPIFY OAUTH ROUTES ---
-
-  // STEP 1 - Auth Initiation
-  app.get('/api/shopify/auth', (req, res) => {
+  
+  // New endpoint to get the Auth URL (to be called by client before opening popup)
+  app.get('/api/shopify/auth-url', (req, res) => {
     const { shop } = req.query;
-    if (!shop) return res.status(400).send('Missing shop parameter');
+    if (!shop) return res.status(400).json({ error: 'Missing shop parameter' });
 
-    // Sanitize shop domain
     const cleanShop = String(shop)
       .replace(/^https?:\/\//i, '')
       .replace(/\/+$/, '');
 
-    const scopes = 'read_products,read_orders,write_products';
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers['host'];
+    // In AI Studio, SHOPIFY_APP_URL might not be set, so we use the request host
+    const baseAppUrl = process.env.VITE_SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL || `${protocol}://${host}`;
     
-    // Use environment variable or determine from request
-    const appUrl = SHOPIFY_APP_URL || `${req.protocol}://${req.get('host')}`;
-    const redirectUri = `${appUrl}/api/shopify/callback`;
+    const callbackPath = '/api/shopify/callback';
+    const redirectUri = `${baseAppUrl.replace(/\/+$/, '')}${callbackPath}`;
+    const scopes = 'read_products,read_orders,write_products';
     const state = crypto.randomBytes(16).toString('hex');
 
-    const authUrl = `https://${cleanShop}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+    const authUrl = `https://${cleanShop}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
     
-    console.log('Initiating OAuth for:', cleanShop, 'Redirecting to:', authUrl);
+    console.log('[Shopify] Auth-URL requested for:', cleanShop);
+    console.log('[Shopify] Generated Redirect URI:', redirectUri);
+    
+    res.json({ url: authUrl });
+  });
+
+  // STEP 1 - Auth Initiation (Legacy support, but preferred way is /auth-url)
+  app.get('/api/shopify/auth', (req, res) => {
+    const { shop } = req.query;
+    if (!shop) return res.status(400).send('Missing shop parameter');
+
+    const cleanShop = String(shop)
+      .replace(/^https?:\/\//i, '')
+      .replace(/\/+$/, '');
+
+    const protocol = req.headers['x-forwarded-proto'] || 'https';
+    const host = req.headers['host'];
+    const baseAppUrl = process.env.VITE_SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL || `${protocol}://${host}`;
+    
+    const redirectUri = `${baseAppUrl.replace(/\/+$/, '')}/api/shopify/callback`;
+    const scopes = 'read_products,read_orders,write_products';
+    const state = crypto.randomBytes(16).toString('hex');
+
+    const authUrl = `https://${cleanShop}/admin/oauth/authorize?client_id=${SHOPIFY_CLIENT_ID}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+    
+    console.log('[Shopify] Initiating legacy OAuth for:', cleanShop);
+    console.log('[Shopify] Redirect URI:', redirectUri);
     res.redirect(authUrl);
   });
 
@@ -131,8 +159,45 @@ async function startServer() {
         console.error('Error notifying n8n of new shop:', err);
       }
 
-      // Redirect back to the app board
-      res.redirect('/dashboard/dropshipper#success=installed');
+      // Send success message to parent window and close popup
+      // This follows AI Studio OAuth integration guidelines
+      res.send(`
+        <html>
+          <head>
+            <title>Installation Réussie</title>
+            <style>
+              body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; background-color: #0A0A0B; color: #fff; }
+              .card { background: #111; padding: 2.5rem; border-radius: 24px; border: 1px solid #222; text-align: center; max-width: 400px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
+              .icon { font-size: 48px; margin-bottom: 1rem; }
+              .spinner { border: 3px solid rgba(255, 255, 255, 0.1); border-left-color: #00ff88; border-radius: 50%; width: 30px; height: 30px; animation: spin 1s linear infinite; margin: 1.5rem auto; }
+              @keyframes spin { to { transform: rotate(360deg); } }
+              button { background: #fff; color: #000; border: none; padding: 12px 24px; border-radius: 12px; font-weight: 900; text-transform: uppercase; letter-spacing: 1px; cursor: pointer; margin-top: 1rem; }
+            </style>
+          </head>
+          <body>
+            <div class="card">
+              <div class="icon">✅</div>
+              <h2 style="margin: 0; font-weight: 900;">Boutique Connectée !</h2>
+              <p style="color: #888; font-size: 14px; line-height: 1.6; margin-top: 1rem;">La boutique <strong>${cleanShop}</strong> a été installée avec succès sur Dropshap.</p>
+              <div class="spinner"></div>
+              <p id="msg" style="font-size: 12px; color: #555;">Fermeture automatique...</p>
+              <button onclick="window.close()">Fermer la fenêtre</button>
+            </div>
+            <script>
+              // Try to notify parent
+              if (window.opener) {
+                window.opener.postMessage({ type: 'SHOPIFY_AUTH_SUCCESS', shop: '${cleanShop}' }, '*');
+                setTimeout(() => {
+                  window.close();
+                }, 2000);
+              } else {
+                document.getElementById('msg').innerText = "Vous pouvez maintenant fermer cette fenêtre.";
+                document.querySelector('.spinner').style.display = 'none';
+              }
+            </script>
+          </body>
+        </html>
+      `);
     } catch (error: any) {
       console.error('OAuth Callback Error:', error.response?.data || error.message);
       res.status(500).send('OAuth failed');

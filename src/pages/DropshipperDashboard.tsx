@@ -19,10 +19,33 @@ export default function DropshipperDashboard() {
   useEffect(() => {
     fetchData();
     fetchShops();
+    
+    // Handle hash-based notifications (for redirects or legacy)
     if (window.location.hash.includes('success=installed')) {
       toast.success('Shopify connecté avec succès !');
       window.location.hash = '';
     }
+
+    // Handle message-based notifications from OAuth popup
+    const handleMessage = (event: MessageEvent) => {
+      // Security check: only accept messages from same origin or ais domains
+      const origin = event.origin;
+      const isAllowedOrigin = 
+        origin === window.location.origin || 
+        origin.endsWith('.run.app') || 
+        origin.includes('localhost') || 
+        origin.includes('aistudio.google.com');
+
+      if (!isAllowedOrigin) return;
+
+      if (event.data?.type === 'SHOPIFY_AUTH_SUCCESS') {
+        toast.success(`Boutique ${event.data.shop} connectée !`);
+        fetchShops(); // Refresh shop list
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
   }, []);
 
   const fetchShops = async () => {
@@ -50,6 +73,42 @@ export default function DropshipperDashboard() {
       setConnectedShops([]);
     }
   };
+
+    const handleConnectShopify = async (shopDomain?: string) => {
+      let finalShop = shopDomain;
+      if (!finalShop) {
+        finalShop = prompt('Entrez l\'URL de votre boutique (ex: ma-boutique.myshopify.com)') || '';
+      }
+      
+      if (!finalShop) return;
+
+      try {
+        // 1. Fetch the Auth URL from the server
+        const res = await fetch(`/api/shopify/auth-url?shop=${encodeURIComponent(finalShop)}`);
+        if (!res.ok) throw new Error('Erreur lors de la récupération de l\'URL d\'auth');
+        const { url } = await res.json();
+
+        // 2. Open the SHOPIFY URL directly in a popup
+        // This is crucial for AI Studio environment (avoids container routes in popups)
+        const width = 600;
+        const height = 800;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        
+        const popup = window.open(
+          url,
+          'shopify_oauth',
+          `width=${width},height=${height},left=${left},top=${top}`
+        );
+
+        if (!popup) {
+          toast.error('Le bloqueur de fenêtres surgissantes a empêché l\'ouverture. Veuillez autoriser les popups.');
+        }
+      } catch (error) {
+        console.error('OAuth error:', error);
+        toast.error('Impossible d\'initier la connexion Shopify');
+      }
+    };
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -133,17 +192,7 @@ export default function DropshipperDashboard() {
                 </select>
                 <div className="flex gap-2">
                   <button 
-                    onClick={() => {
-                      const shop = prompt('Entrez l\'URL de votre autre boutique (ex: ma-boutique.myshopify.com)');
-                      if (shop) {
-                        const url = `/api/shopify/auth?shop=${encodeURIComponent(shop)}`;
-                        if (window.self !== window.top) {
-                          window.open(url, '_blank');
-                        } else {
-                          window.location.href = url;
-                        }
-                      }
-                    }}
+                    onClick={() => handleConnectShopify()}
                     className="text-[10px] font-black uppercase text-primary hover:underline"
                   >
                     + Ajouter une autre boutique
@@ -151,7 +200,11 @@ export default function DropshipperDashboard() {
                 </div>
               </div>
             ) : (
-                <div className="flex flex-col gap-2">
+                <div className="flex flex-col gap-3">
+                  <p className="text-[10px] text-gray-400 bg-white/5 p-2 rounded border border-white/10">
+                    Configuration : Utilisez cette URL de callback dans Shopify :<br/>
+                    <code className="text-primary break-all">{window.location.origin}/api/shopify/callback</code>
+                  </p>
                   <input 
                     type="text" 
                     placeholder="votre-boutique.myshopify.com"
@@ -161,14 +214,7 @@ export default function DropshipperDashboard() {
                   <button 
                     onClick={() => {
                       const shop = (document.getElementById('shop-domain-input') as HTMLInputElement).value;
-                      if (!shop) return toast.error('Veuillez entrer un domaine Shopify');
-                      const url = `/api/shopify/auth?shop=${encodeURIComponent(shop)}`;
-                      // If in iframe, open in new tab
-                      if (window.self !== window.top) {
-                        window.open(url, '_blank');
-                      } else {
-                        window.location.href = url;
-                      }
+                      handleConnectShopify(shop);
                     }}
                     className="btn-primary py-2 px-4 text-xs font-black uppercase tracking-widest h-fit"
                   >
