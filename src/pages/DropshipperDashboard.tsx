@@ -4,6 +4,7 @@ import StatsCard from '../components/StatsCard';
 import DataTable from '../components/DataTable';
 import { Package, CreditCard, ShoppingCart, ExternalLink, RefreshCw } from 'lucide-react';
 import { dataService } from '../lib/data';
+import { supabase } from '../lib/supabase';
 import { Product, Transaction } from '../types';
 import { formatCurrency, cn } from '../lib/utils';
 import { toast } from 'react-hot-toast';
@@ -12,7 +13,7 @@ export default function DropshipperDashboard() {
   const [products, setProducts] = useState<Product[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [connectedShops, setConnectedShops] = useState<{shop_domain: string}[]>([]);
-  const [selectedShop, setSelectedShop] = useState<string>('');
+  const [selectedShop, setSelectedShop] = useState<string>(() => localStorage.getItem('last_selected_shop') || '');
   const [isLoading, setIsLoading] = useState(true);
   const [isPushing, setIsPushing] = useState<string | null>(null);
 
@@ -39,8 +40,14 @@ export default function DropshipperDashboard() {
       if (!isAllowedOrigin) return;
 
       if (event.data?.type === 'SHOPIFY_AUTH_SUCCESS') {
-        toast.success(`Boutique ${event.data.shop} connectée !`);
-        fetchShops(); // Refresh shop list
+        const shopDomain = event.data.shop;
+        console.log(`OAuth Success reported for: ${shopDomain}`);
+        toast.success(`Boutique ${shopDomain} connectée !`);
+        
+        // Wait a bit before fetching to let Supabase finish the upsert
+        setTimeout(() => {
+          fetchShops();
+        }, 1500);
       }
     };
 
@@ -48,7 +55,14 @@ export default function DropshipperDashboard() {
     return () => window.removeEventListener('message', handleMessage);
   }, []);
 
+  useEffect(() => {
+    if (selectedShop) {
+      localStorage.setItem('last_selected_shop', selectedShop);
+    }
+  }, [selectedShop]);
+
   const fetchShops = async () => {
+    console.log('Fetching connected shops...');
     try {
       const response = await fetch('/api/shopify/shops');
       
@@ -59,9 +73,21 @@ export default function DropshipperDashboard() {
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const data = await response.json();
-        setConnectedShops(Array.isArray(data) ? data : []);
-        if (data && Array.isArray(data) && data.length > 0) {
-          setSelectedShop(data[0].shop_domain);
+        console.log('Shops fetched:', data);
+        const shops = Array.isArray(data) ? data : [];
+        setConnectedShops(shops);
+        console.log(`Setting connected shops. Current selection: ${selectedShop}`);
+        
+        // Auto-select if nothing is selected or if current selection is not in list
+        if (shops.length > 0) {
+          const isSelectedInList = shops.some(s => s.shop_domain === selectedShop);
+          if (!selectedShop || !isSelectedInList) {
+            const nextShop = shops[0].shop_domain;
+            console.log(`Auto-selecting shop: ${nextShop}`);
+            setSelectedShop(nextShop);
+          }
+        } else {
+          setSelectedShop('');
         }
       } else {
         const text = await response.text();
@@ -71,6 +97,31 @@ export default function DropshipperDashboard() {
     } catch (error) {
       console.error('Error fetching shops:', error);
       setConnectedShops([]);
+    }
+  };
+
+  const handleTestSupabase = async () => {
+    const testDomain = `test-${Date.now()}.myshopify.com`;
+    // We try to upsert directly from frontend to verify RLS and credentials
+    toast.loading('Test Supabase Direct Client...', { id: 'supabase-test' });
+    try {
+      const { data, error } = await supabase.from('shops').upsert({
+        shop_domain: testDomain,
+        access_token: 'test_token_front',
+        installed_at: new Date().toISOString()
+      }).select();
+
+      if (error) {
+        console.error('Supabase Error:', error);
+        throw error;
+      }
+      
+      toast.success(`Succès Supabase! Boutique créée: ${testDomain}`, { id: 'supabase-test' });
+      console.log('Test entry created:', data);
+      fetchShops(); // Refresh list
+    } catch (error: any) {
+      console.error('Supabase Direct Error:', error);
+      toast.error(`Échec Direct: ${error.message}`, { id: 'supabase-test' });
     }
   };
 
@@ -122,8 +173,10 @@ export default function DropshipperDashboard() {
   };
 
   const handlePushToShopify = async (productId: string) => {
+    console.log(`Attempting to push product ${productId} to shop: ${selectedShop}`);
+    
     if (!selectedShop) {
-      return toast.error('Veuillez d\'abord connecter une boutique Shopify');
+      return toast.error('Veuillez d\'abord connecter une boutique Shopify ou en sélectionner une dans la liste.');
     }
 
     setIsPushing(productId);
@@ -205,6 +258,14 @@ export default function DropshipperDashboard() {
                     Configuration : Utilisez cette URL de callback dans Shopify :<br/>
                     <code className="text-primary break-all">{window.location.origin}/api/shopify/callback</code>
                   </p>
+                  
+                  <button 
+                    onClick={handleTestSupabase}
+                    className="text-[9px] text-gray-500 hover:text-white transition-colors text-right"
+                  >
+                    [debug] Tester connexion Supabase Directe
+                  </button>
+
                   <input 
                     type="text" 
                     placeholder="votre-boutique.myshopify.com"

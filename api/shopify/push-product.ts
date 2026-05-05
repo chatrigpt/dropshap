@@ -40,23 +40,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(404).json({ error: 'Shop not connected' });
     }
 
+    const imageSource = product.photo_produit || product.image_url || product.photo_url;
+    const isBase64 = imageSource?.startsWith('data:image');
+
     // 3. Create product on Shopify using REST API
     const restProduct = {
       product: {
-        title: product.product_name || product.name,
+        title: product.product_name || product.name || 'Produit sans titre',
         body_html: `<strong>Variante:</strong> ${product.variant || 'Standard'}<br><strong>Description:</strong> Produit importé via Dropshap.`,
         vendor: product.supplier_name || 'Dropshap Supplier',
-        product_type: product.category,
+        product_type: product.category || 'Général',
         status: 'active',
         variants: [
           {
-            price: product.label_price,
-            sku: product.product_code || product.code,
+            price: product.label_price || 0,
+            sku: product.product_code || product.code || `sku-${product.id}`,
             inventory_management: 'shopify',
             inventory_policy: 'deny'
           }
         ],
-        images: (product.photo_produit || product.image_url || product.photo_url) ? [{ src: product.photo_produit || product.image_url || product.photo_url }] : []
+        images: imageSource 
+          ? [isBase64 ? { attachment: imageSource.split(',')[1] } : { src: imageSource }] 
+          : []
       }
     };
 

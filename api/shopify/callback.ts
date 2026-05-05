@@ -28,15 +28,29 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const accessToken = accessTokenResponse.data.access_token;
 
     // Store in Supabase
-    const { error: dbError } = await supabase.from('shops').upsert({
+    console.log(`[Shopify Serverless] Attempting to save shop: ${cleanShop}`);
+    const { data: dbData, error: dbError } = await supabase.from('shops').upsert({
       shop_domain: cleanShop,
       access_token: accessToken,
       installed_at: new Date().toISOString()
-    }, { onConflict: 'shop_domain' });
+    }, { onConflict: 'shop_domain' }).select();
 
     if (dbError) {
-      console.error('Error saving shop to Supabase:', dbError);
+      console.error('[Shopify Serverless] Supabase save error:', dbError);
+      return res.status(500).send(`
+        <html>
+          <body style="background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+            <h1 style="color: #ff4444;">Erreur de Stockage Base de Données</h1>
+            <p>La boutique a été autorisée par Shopify, mais nous n'avons pas pu enregistrer les accès dans Supabase.</p>
+            <pre style="background: #111; padding: 1rem; border-radius: 8px; border: 1px solid #333; font-size: 12px;">${JSON.stringify(dbError, null, 2)}</pre>
+            <p>Vérifiez vos variables d'environnement VITE_SUPABASE_URL et VITE_SUPABASE_SERVICE_ROLE_KEY.</p>
+            <button onclick="window.close()" style="background: #fff; color: #000; padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none; font-weight: bold;">Fermer</button>
+          </body>
+        </html>
+      `);
     }
+
+    console.log('[Shopify Serverless] Shop saved successfully:', dbData);
 
     // Send success message to parent window and close popup
     // This follows AI Studio OAuth integration guidelines

@@ -33,23 +33,24 @@ async function startServer() {
 
   // List all connected shops
   app.get('/api/shopify/shops', async (req, res) => {
-    console.log('API Request: GET /api/shopify/shops');
+    console.log('[API] GET /api/shopify/shops requested');
     try {
       const { data, error } = await supabase
         .from('shops')
         .select('shop_domain, installed_at');
       
       if (error) {
-        console.error('Supabase error fetching shops:', error);
-        // Special check for missing table
+        console.error('[Supabase] Error fetching shops:', error);
         if (error.code === '42P01') {
-          return res.status(200).json([]); // Return empty list gracefully if table missing
+          return res.status(200).json([]);
         }
         throw error;
       }
+      
+      console.log(`[Shopify] Found ${data?.length || 0} connected shops`);
       res.json(data || []);
     } catch (error: any) {
-      console.error('Error in /api/shopify/shops:', error.message);
+      console.error('[Shopify] Error in /api/shopify/shops:', error.message);
       res.status(500).json({ error: 'Database error', details: error.message });
     }
   });
@@ -77,10 +78,11 @@ async function startServer() {
     const protocol = req.headers['x-forwarded-proto'] || 'https';
     const host = req.headers['host'];
     // In AI Studio, SHOPIFY_APP_URL might not be set, so we use the request host
-    const baseAppUrl = process.env.VITE_SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL || `${protocol}://${host}`;
+    // Standardize to prefer VITE_ prefix if set
+    const baseAppUrl = (process.env.VITE_SHOPIFY_APP_URL || process.env.SHOPIFY_APP_URL || `${protocol}://${host}`).replace(/\/+$/, '');
     
     const callbackPath = '/api/shopify/callback';
-    const redirectUri = `${baseAppUrl.replace(/\/+$/, '')}${callbackPath}`;
+    const redirectUri = `${baseAppUrl}${callbackPath}`;
     const scopes = 'read_products,read_orders,write_products';
     const state = crypto.randomBytes(16).toString('hex');
 
@@ -135,16 +137,29 @@ async function startServer() {
       const accessToken = accessTokenResponse.data.access_token;
 
       // Store in Supabase
-      const { error: dbError } = await supabase.from('shops').upsert({
+      console.log(`[Shopify] Attempting to save shop: ${cleanShop} with token: ${accessToken ? '***' + accessToken.slice(-4) : 'undefined'}`);
+      const { data: dbData, error: dbError } = await supabase.from('shops').upsert({
         shop_domain: cleanShop,
         access_token: accessToken,
         installed_at: new Date().toISOString()
-      }, { onConflict: 'shop_domain' });
+      }, { onConflict: 'shop_domain' }).select();
 
       if (dbError) {
-        console.error('Error saving shop to Supabase:', dbError);
-        // Continue anyway as we have the token
+        console.error('[Shopify] Supabase save error:', dbError);
+        return res.status(500).send(`
+          <html>
+            <body style="background: #000; color: #fff; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+              <h1 style="color: #ff4444;">Erreur de Stockage Base de Données (Server)</h1>
+              <p>La boutique a été autorisée par Shopify, mais nous n'avons pas pu enregistrer les accès dans Supabase.</p>
+              <pre style="background: #111; padding: 1rem; border-radius: 8px; border: 1px solid #333; font-size: 12px;">${JSON.stringify(dbError, null, 2)}</pre>
+              <p>Vérifiez vos variables d'environnement VITE_SUPABASE_URL et VITE_SUPABASE_SERVICE_ROLE_KEY.</p>
+              <button onclick="window.close()" style="background: #fff; color: #000; padding: 10px 20px; border-radius: 8px; cursor: pointer; border: none; font-weight: bold;">Fermer</button>
+            </body>
+          </html>
+        `);
       }
+      
+      console.log('[Shopify] Shop saved successfully:', dbData);
 
       // STEP 3 - Register Webhooks
       await registerShopifyWebhooks(cleanShop, accessToken);
@@ -217,8 +232,13 @@ async function startServer() {
     const body = req.body.toString();
 
     // Verify HMAC
+    if (!SHOPIFY_CLIENT_SECRET) {
+      console.error('[Webhook] Critical: SHOPIFY_CLIENT_SECRET is not set. Cannot verify webhook.');
+      return res.status(500).send('Secret missing');
+    }
+
     const hash = crypto
-      .createHmac('sha256', SHOPIFY_CLIENT_SECRET || '')
+      .createHmac('sha256', SHOPIFY_CLIENT_SECRET)
       .update(req.body, 'utf8')
       .digest('base64');
 
@@ -361,24 +381,31 @@ async function startServer() {
       // Since we don't know the location ID, we'll use the REST API for simpler inventory management initially
       // or just create the product without setting inventory quantities if it's too complex for a first pass
       
+      const imageSource = product.photo_produit || product.image_url || product.photo_url;
+      const isBase64 = imageSource?.startsWith('data:image');
+      
       const restProduct = {
         product: {
-          title: product.product_name || product.name,
+          title: product.product_name || product.name || 'Produit sans titre',
           body_html: `<strong>Variante:</strong> ${product.variant || 'Standard'}<br><strong>Description:</strong> Produit importé via Dropshap.`,
           vendor: product.supplier_name || 'Dropshap Supplier',
-          product_type: product.category,
+          product_type: product.category || 'Général',
           status: 'active',
           variants: [
             {
-              price: product.label_price,
-              sku: product.product_code || product.code,
+              price: product.label_price || 0,
+              sku: product.product_code || product.code || `sku-${product.id}`,
               inventory_management: 'shopify',
               inventory_policy: 'deny'
             }
           ],
-          images: (product.image_url || product.photo_url) ? [{ src: product.image_url || product.photo_url }] : []
+          images: imageSource 
+            ? [isBase64 ? { attachment: imageSource.split(',')[1] } : { src: imageSource }] 
+            : []
         }
       };
+
+      console.log(`[Shopify] Pushing product to ${shopDomain}:`, restProduct.product.title, isBase64 ? '(Base64 Image)' : '(URL Image)');
 
       const shopifyResponse = await axios.post(
         `https://${shopDomain}/admin/api/2024-01/products.json`,
@@ -423,12 +450,18 @@ async function startServer() {
 
 // STEP 3 helper function
 async function registerShopifyWebhooks(shop: string, accessToken: string) {
+  const baseAppUrl = process.env.VITE_SHOPIFY_APP_URL || SHOPIFY_APP_URL || '';
+  if (!baseAppUrl) {
+    console.warn('[Webhooks] Skip registration: No SHOPIFY_APP_URL defined');
+    return null;
+  }
+
   const query = `
     mutation {
       webhookSubscriptionCreate(
         topic: PRODUCTS_CREATE,
         webhookSubscription: {
-          callbackUrl: "${SHOPIFY_APP_URL}/api/webhooks/shopify",
+          callbackUrl: "${baseAppUrl.replace(/\/+$/, '')}/api/webhooks/shopify",
           format: JSON
         }
       ) {
@@ -438,7 +471,7 @@ async function registerShopifyWebhooks(shop: string, accessToken: string) {
       ordersCreate: webhookSubscriptionCreate(
         topic: ORDERS_CREATE,
         webhookSubscription: {
-          callbackUrl: "${SHOPIFY_APP_URL}/api/webhooks/shopify",
+          callbackUrl: "${baseAppUrl.replace(/\/+$/, '')}/api/webhooks/shopify",
           format: JSON
         }
       ) {
